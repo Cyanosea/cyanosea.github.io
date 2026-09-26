@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="main.css?v=1.6">
     <link rel="shortcut icon" href="https://raw.githubusercontent.com/Cyanosea/cloud/main/icons/favicon.ico" type="image/ico" />
     <title>青花椒有点麻</title>
     <script charset="UTF-8" id="LA_COLLECT" src="//sdk.51.la/js-sdk-pro.min.js"></script>
@@ -12,6 +12,8 @@
 </head>
 
 <body>
+    <script>document.documentElement.classList.add('js-preload');</script>
+    <div class="page-loader" aria-hidden="true"></div>
 
     <div class="container">
         <div class="box">
@@ -114,6 +116,135 @@
             var host = window.location.host;
             window.open("http://" + document.domain + ':' + num, "_blank")
         }
+    </script>
+    
+    <script>
+        // 进场动画：页面加载后淡出白/黑遮罩，并逐项浮现图标内容
+        var revealed = false;
+        function revealPage() {
+            if (revealed) return;
+            revealed = true;
+            document.documentElement.classList.add('is-loaded');
+            // 动画结束后将遮罩移出 DOM，避免遮挡与残留
+            setTimeout(function () {
+                var loader = document.querySelector('.page-loader');
+                if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
+            }, 1300);
+        }
+        if (document.readyState === 'complete') {
+            revealPage();
+        } else {
+            window.addEventListener('load', revealPage);
+            // 兜底：资源加载过慢时也按时触发动画
+            setTimeout(revealPage, 2500);
+        }
+    </script>
+
+    <script>
+        // 磁吸跟随：悬停轻微放大 + 小范围吸附跟随；图标与文字整体移动保持居中对齐；
+        // 速度随距离衰减（越靠近中心吸附越慢），缓动逼近消除晃动
+        (function () {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            var boxes = Array.prototype.slice.call(document.querySelectorAll('.container .box'));
+            if (!boxes.length) return;
+            var snapRadius = 6;    // 中心吸附半径（px）：此范围内图标缓慢吸附跟随鼠标
+            var radius = 65;       // 感应半径（px）：磁吸与放大共用同一距离，鼠标需靠近图标才触发
+            var maxOffset = 3;     // 远端最大跟随位移（px，很小）
+            var maxScale = 1.10;   // 悬停最大放大倍率（轻微）
+            var falloff = 1.6;     // 距离衰减指数
+            var easeBase = 0.08;   // 基础逼近速度（每帧，越小越慢，收敛约 0.8s）
+            var scaleEase = 0.08;  // 缩放逼近速度（每帧，放大/复位动画约 0.8s）
+            var raf = null, px = -9999, py = -9999;
+            // 缓存每个 box 的静止中心坐标（距离计算始终基于原始位置，避免反馈抖动）
+            // 以及每个 box 的当前缓动状态（位移/缩放）
+            var centers = [], state = [];
+            function measure() {
+                centers = boxes.map(function (el) {
+                    var r = el.getBoundingClientRect();
+                    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+                });
+            }
+            measure();
+            window.addEventListener('load', measure);
+            window.addEventListener('resize', measure);
+            // 进场动画会先给 .box 施加 translateY(18px)，结束后重测中心；
+            // 同时关闭 .box 的 CSS 过渡（transform 0.6s），避免与 rAF 缓动冲突
+            var observer = new MutationObserver(function () {
+                if (document.documentElement.classList.contains('is-loaded')) {
+                    setTimeout(function () {
+                        measure();
+                        for (var i = 0; i < boxes.length; i++) {
+                            boxes[i].style.transition = 'none';
+                            state[i] = { x: 0, y: 0, s: 1 };
+                        }
+                    }, 1400);
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+            for (var i = 0; i < boxes.length; i++) state[i] = { x: 0, y: 0, s: 1 };
+
+            function frame() {
+                raf = null;
+                var moving = false;
+                for (var i = 0; i < boxes.length; i++) {
+                    var cx = centers[i].x;
+                    var cy = centers[i].y;
+                    var dx = px - cx;
+                    var dy = py - cy;
+                    var dist = Math.sqrt(dx * dx + dy * dy);
+                    var targetX = 0, targetY = 0, targetScale = 1;
+                    if (dist < radius) {
+                        var p = Math.pow(1 - dist / radius, falloff);
+                        targetScale = 1 + (maxScale - 1) * p;
+                        if (dist < snapRadius) {
+                            // 中心吸附区：目标为鼠标偏移（图标贴向鼠标），但逼近速度随距离衰减
+                            targetX = dx;
+                            targetY = dy;
+                            targetScale = maxScale;
+                        } else {
+                            // 磁吸区：向鼠标方向小幅位移，与吸附区边界平滑衔接
+                            var blend = (dist - snapRadius) / (radius - snapRadius);
+                            var mag = maxOffset * p;
+                            var amt = mag + (snapRadius - mag) * (1 - blend);
+                            targetX = (dx / dist) * amt;
+                            targetY = (dy / dist) * amt;
+                        }
+                    }
+                    // 缓动逼近：中心附近速度显著变慢（k 随距离缩小），消除晃动
+                    var k = easeBase;
+                    if (dist < snapRadius) k = easeBase * (0.12 + 0.88 * (dist / snapRadius));
+                    var st = state[i];
+                    st.x += (targetX - st.x) * k;
+                    st.y += (targetY - st.y) * k;
+                    st.s += (targetScale - st.s) * scaleEase;
+                    if (Math.abs(st.x) < 0.05 && Math.abs(st.y) < 0.05 && Math.abs(st.s - 1) < 0.005) {
+                        boxes[i].style.transform = '';
+                        boxes[i].style.zIndex = '';
+                    } else {
+                        boxes[i].style.transform = 'translate(' + st.x.toFixed(2) + 'px,' + st.y.toFixed(2) + 'px) scale(' + st.s.toFixed(3) + ')';
+                        boxes[i].style.zIndex = '2';
+                    }
+                    // 是否仍在向目标逼近（未收敛则继续下一帧，动画完整播放）
+                    if (Math.abs(st.x - targetX) > 0.05 || Math.abs(st.y - targetY) > 0.05 || Math.abs(st.s - targetScale) > 0.005) {
+                        moving = true;
+                    }
+                }
+                if (moving) raf = requestAnimationFrame(frame);
+            }
+
+            function schedule(x, y) {
+                px = x; py = y;
+                if (!raf) raf = requestAnimationFrame(frame);
+            }
+
+            document.addEventListener('mousemove', function (e) {
+                schedule(e.clientX, e.clientY);
+            }, { passive: true });
+            document.addEventListener('mouseleave', function () {
+                schedule(-9999, -9999);
+            });
+        })();
     </script>
     
 

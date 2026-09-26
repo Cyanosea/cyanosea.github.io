@@ -49,6 +49,8 @@ body{
 }
 .container .box p{
     color: slategrey;
+    text-align: center;
+    white-space: nowrap;
 }
 .container .box .img:hover{
     box-shadow: 0px 0px 0px rgba(0, 0, 0, 0.2),
@@ -60,4 +62,105 @@ body{
 .container .box .img:hover img{
     width: 58px;
     transition: width 0.2s ease-out;
+}
+
+/* ===== 整页深色模式：蓝粉圆球磨砂玻璃 + 悬停放大（类Dock） ===== */
+@media (prefers-color-scheme: dark){
+    body{
+        background-color: #15141c;
+        background-image:
+            radial-gradient(circle at 18% 20%, rgba(80, 140, 255, 0.45), transparent 40%),
+            radial-gradient(circle at 84% 25%, rgba(255, 90, 180, 0.42), transparent 40%),
+            radial-gradient(circle at 70% 85%, rgba(150, 80, 255, 0.38), transparent 42%),
+            radial-gradient(circle at 25% 82%, rgba(80, 200, 255, 0.35), transparent 42%),
+            radial-gradient(circle at 50% 50%, rgba(22, 18, 40, 0.75), transparent 75%);
+        background-attachment: fixed;
+    }
+    .container .box .img{
+        background-color: rgba(255, 255, 255, 0.08);
+        -webkit-backdrop-filter: blur(8px) saturate(108%);
+        backdrop-filter: blur(8px) saturate(108%);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.24);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.20);
+        transition: box-shadow .2s ease-out, background-color 1.6s ease-out;
+    }
+    .container .box .img:hover{
+        transform: scale(1.08);
+        z-index: 2;
+        background-color: rgba(0, 0, 0, 0.30);
+        border-color: rgba(255, 255, 255, 0.34);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.30);
+        transition: box-shadow .2s ease-out, background-color 1.6s ease-out;
+    }
+    .container .box .img:hover img{
+        width: 60px;
+    }
+    .container .box p{
+        color: #d5d8de;
+    }
+}
+
+/* ===== 进场动画：白/黑遮罩淡出，内容逐项浮现 ===== */
+.page-loader{
+    position: fixed;
+    inset: 0;
+    background-color: #ffffff;
+    z-index: 9999;
+    transition: opacity 0.9s ease;
+}
+@media (prefers-color-scheme: dark){
+    .page-loader{
+        background-color: #000000;
+    }
+}
+
+.container .box{
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+/* 仅在启用 JS 时先隐藏内容，避免无 JS 用户看到空白 */
+html.js-preload .container .box{
+    opacity: 0;
+    transform: translateY(18px);
+}
+/* 图标逐项错峰浮现 */
+html.js-preload .container .box:nth-child(1){ transition-delay: 0.00s; }
+html.js-preload .container .box:nth-child(2){ transition-delay: 0.05s; }
+html.js-preload .container .box:nth-child(3){ transition-delay: 0.10s; }
+html.js-preload .container .box:nth-child(4){ transition-delay: 0.15s; }
+html.js-preload .container .box:nth-child(5){ transition-delay: 0.20s; }
+html.js-preload .container .box:nth-child(6){ transition-delay: 0.25s; }
+html.js-preload .container .box:nth-child(7){ transition-delay: 0.30s; }
+html.js-preload .container .box:nth-child(8){ transition-delay: 0.35s; }
+html.js-preload .container .box:nth-child(9){ transition-delay: 0.40s; }
+html.js-preload .container .box:nth-child(10){ transition-delay: 0.45s; }
+html.js-preload .container .box:nth-child(11){ transition-delay: 0.50s; }
+html.js-preload .container .box:nth-child(12){ transition-delay: 0.55s; }
+html.js-preload .container .box:nth-child(13){ transition-delay: 0.60s; }
+html.js-preload .container .box:nth-child(14){ transition-delay: 0.65s; }
+html.js-preload .container .box:nth-child(15){ transition-delay: 0.70s; }
+html.js-preload .container .box:nth-child(16){ transition-delay: 0.75s; }
+
+html.is-loaded .page-loader{
+    opacity: 0;
+    pointer-events: none;
+}
+html.is-loaded .container .box{
+    opacity: 1;
+    transform: none;
+}
+
+/* 用户偏好减弱动效时，直接显示内容、隐藏遮罩 */
+@media (prefers-reduced-motion: reduce){
+    .page-loader,
+    .container .box{
+        transition: none;
+    }
+    html.js-preload .container .box{
+        opacity: 1;
+        transform: none;
+    }
+    html.js-preload .page-loader{
+        opacity: 0;
+    }
 }
